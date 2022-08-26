@@ -24,6 +24,8 @@ app.use("/admin", getProfile, adminRoute);
 //  * FIX ME!
 //  * @returns contract by id
 //  */
+
+// Moved Handler into contracts route
 // app.get("/contracts/:id", getProfile, async (req, res) => {
 //   const { Contract } = req.app.get("models");
 //   const { id } = req.params;
