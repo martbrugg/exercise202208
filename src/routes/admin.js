@@ -8,12 +8,12 @@ var moment = require("moment");
  */
 router.get("/best-profession", async (req, res) => {
   const { Contract, Job, Profile } = req.app.get("models");
-  const endDate = moment(req.query.end)
-    .endOf("day")
-    .format("YYYY-MM-DD HH:mm:ss");
-  const startDate = moment(req.query.start)
-    .startOf("day")
-    .format("YYYY-MM-DD HH:mm:ss");
+  const endDate = req.query.end
+    ? moment(req.query.end).endOf("day").format("YYYY-MM-DD HH:mm:ss")
+    : undefined;
+  const startDate = req.query.start
+    ? moment(req.query.start).startOf("day").format("YYYY-MM-DD HH:mm:ss")
+    : undefined;
   const jobs = await Job.findAll({
     where: {
       paid: true,
@@ -67,13 +67,13 @@ router.get("/best-profession", async (req, res) => {
 
 router.get("/best-clients", async (req, res) => {
   const { Contract, Job, Profile } = req.app.get("models");
-  const endDate = moment(req.query.end)
-    .endOf("day")
-    .format("YYYY-MM-DD HH:mm:ss");
-  const startDate = moment(req.query.start)
-    .startOf("day")
-    .format("YYYY-MM-DD HH:mm:ss");
-
+  const endDate = req.query.end
+    ? moment(req.query.end).endOf("day").format("YYYY-MM-DD HH:mm:ss")
+    : undefined;
+  const startDate = req.query.start
+    ? moment(req.query.start).startOf("day").format("YYYY-MM-DD HH:mm:ss")
+    : undefined;
+  
   const limit = req.query.limit || 2;
   const jobs = await Job.findAll({
     where: {
