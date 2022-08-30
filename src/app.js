@@ -22,6 +22,8 @@ app.use("/jobs", getProfile, jobsRoute);
 app.use("/balances", getProfile, balancesRoute);
 app.use("/admin", getProfile, adminRoute);
 
+
+// Generation of Swagger API Documentation
 const specs = swaggerJsdoc(swagger.options);
 app.use(
   "/api-docs",
