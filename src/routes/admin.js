@@ -4,6 +4,34 @@ const { Op } = require("sequelize");
 var moment = require("moment");
 
 /**
+ * @openapi
+ * /admin/best-profession:
+ *   get:
+ *     tags:
+ *      - admin
+ *     parameters:
+ *       - name: profile_id
+ *         in: header
+ *         description: profile id for authorization
+ *         required: true
+ *         type: string
+ *       - name: start
+ *         in: query
+ *         description: startdate
+ *         required: true
+ *         type: date
+ *       - name: end
+ *         in: query
+ *         description: enddate
+ *         required: true
+ *         type: date
+ *     description: get the best profession in time range.
+ *     responses:
+ *       200:
+ *         description: Returns the best profession in time range.
+ */
+
+/**
  * @returns best profession in time range
  */
 router.get("/best-profession", async (req, res) => {
@@ -62,6 +90,38 @@ router.get("/best-profession", async (req, res) => {
 });
 
 /**
+ * @openapi
+ * /admin/best-clients:
+ *   get:
+ *     tags:
+ *      - admin
+ *     parameters:
+ *       - name: profile_id
+ *         in: header
+ *         description: profile id for authorization
+ *         required: true
+ *         type: string
+ *       - name: start
+ *         in: query
+ *         description: startdate
+ *         required: true
+ *         type: date
+ *       - name: end
+ *         in: query
+ *         description: enddate
+ *         required: true
+ *         type: date
+ *       - name: limit
+ *         in: query
+ *         description: limit of items
+ *         required: false
+ *         type: integer
+ *     description: get a list of the best cleients in time range.
+ *     responses:
+ *       200:
+ *         description: Returns a list of the best cleients in time range.
+ * 
+ * 
  * @returns best clients in time range
  */
 
@@ -73,7 +133,7 @@ router.get("/best-clients", async (req, res) => {
   const startDate = req.query.start
     ? moment(req.query.start).startOf("day").format("YYYY-MM-DD HH:mm:ss")
     : undefined;
-  
+
   const limit = req.query.limit || 2;
   const jobs = await Job.findAll({
     where: {

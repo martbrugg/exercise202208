@@ -7,7 +7,9 @@
     "express": "4.17.1",
     "moment": "^2.29.4",
     "sequelize": "^6.3.4",
-    "sqlite3": "^4.0.1"
+    "sqlite3": "^4.0.1",
+    "swagger-jsdoc": "^6.2.5",
+    "swagger-ui-express": "^4.5.0"
   },
   "scripts": {
     "start": "nodemon ./src/server.js",

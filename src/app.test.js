@@ -168,7 +168,8 @@ describe("GET /jobs/unpaid", () => {
       const response = await request(app)
         .post("/balances/deposit/4")
         .set("Accept", "application/json")
-        .set("profile_id", 4);
+        .set("profile_id", 4)
+        .send({ amount: 50 });
 
       expect(response.status).toEqual(200);
       expect(response.body.id).toEqual(4);

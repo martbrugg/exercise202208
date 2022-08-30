@@ -3,6 +3,38 @@ const router = express.Router();
 const { Op } = require("sequelize");
 
 /**
+ * @openapi
+ * /balances/deposit/{userId}:
+ *   post:
+ *     tags:
+ *      - balances
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         required: true
+ *         type: integer
+ *         minimum: 1
+ *         description: The id of the Client to deposit.
+ *       - name: profile_id
+ *         in: header
+ *         description: profile id for authorization
+ *         required: true
+ *         type: string
+ *     requestBody:
+ *      content:
+ *        application/json:
+ *          schema:
+ *            type: object
+ *            properties:
+ *              amount:        
+ *                type: integer
+ *     description: Deposit a Balance for a client
+ *     responses:
+ *       200:
+ *         description: Returns the updated Client
+ */
+
+/**
  * @returns updated client
  */
 router.post("/deposit/:userId", async (req, res) => {
@@ -13,6 +45,10 @@ router.post("/deposit/:userId", async (req, res) => {
 
   if (!client) {
     return res.status(404).end(`Client not found`);
+  }
+
+  if (!amount) {
+    return res.status(404).end(`no amount in body`);
   }
   const jobs = await Job.findAll({
     where: {
