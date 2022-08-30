@@ -1,6 +1,12 @@
-# DEEL BACKEND TASK
+# Summary
 
-  
+- all the neccesary endpoints are implemented.
+- the request handlers are in the specific endpoint file in der src/routes directory
+- to assure the integrity of the api spec I made unit tests. Those tests ar in the app.test.js file. Test runner is jest and supertest
+- for the documentation of the api i added swagger-jsdoc to create an interactive api documentation and test-ui. it is accessible via http://localhost:3001/api-docs/
+
+
+# DEEL BACKEND TASK
 
 💫 Welcome! 🎉
 

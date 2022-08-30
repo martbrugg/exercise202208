@@ -122,23 +122,23 @@ describe("GET /jobs/unpaid", () => {
       expect(response.body.paid).toBeTruthy();
     });
 
-    it("Payment of paid Job should return status 404", async () => {
+    it("Payment of paid Job should return status 400", async () => {
       const response = await request(app)
         .post("/jobs/2/pay")
         .set("Accept", "application/json")
         .set("profile_id", 1);
 
-      expect(response.status).toEqual(404);
+      expect(response.status).toEqual(400);
       expect(response.text).toEqual("job is already paid");
     });
 
-    it("Payment of Job with unnsufficient balance should return status 404", async () => {
+    it("Payment of Job with unnsufficient balance should return status 400", async () => {
       const response = await request(app)
         .post("/jobs/5/pay")
         .set("Accept", "application/json")
         .set("profile_id", 4);
 
-      expect(response.status).toEqual(404);
+      expect(response.status).toEqual(400);
       expect(response.text).toEqual("not enough balance");
     });
   });
@@ -153,23 +153,33 @@ describe("GET /jobs/unpaid", () => {
       expect(response.status).toEqual(404);
     });
 
-    it("Deposit of to big amount shoud return 404", async () => {
+    it("Deposit of to big amount shoud return 400", async () => {
       const response = await request(app)
         .post("/balances/deposit/1")
         .set("Accept", "application/json")
         .set("profile_id", 4)
         .send({ amount: 1000 });
 
-      expect(response.status).toEqual(404);
+      expect(response.status).toEqual(400);
       expect(response.text).toMatch(/Max payment amount/);
     });
 
-    it("Deposit of to big amount shoud return Client", async () => {
+    it("Deposit of no body should return error 400", async () => {
       const response = await request(app)
         .post("/balances/deposit/4")
         .set("Accept", "application/json")
         .set("profile_id", 4)
-        .send({ amount: 50 });
+        .send();
+
+      expect(response.status).toEqual(400);
+    });
+
+    it("Deposit shoud return updated Client", async () => {
+      const response = await request(app)
+        .post("/balances/deposit/4")
+        .set("Accept", "application/json")
+        .set("profile_id", 4)
+        .send({ amount: 30 });
 
       expect(response.status).toEqual(200);
       expect(response.body.id).toEqual(4);

@@ -15,6 +15,8 @@ app.use(bodyParser.json());
 app.set("sequelize", sequelize);
 app.set("models", sequelize.models);
 
+
+// load routes for the endpoints
 app.use("/contracts", getProfile, contractsRoute);
 app.use("/jobs", getProfile, jobsRoute);
 app.use("/balances", getProfile, balancesRoute);
