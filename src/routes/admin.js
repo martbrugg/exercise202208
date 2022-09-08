@@ -36,6 +36,7 @@ var moment = require("moment");
  */
 router.get("/best-profession", async (req, res) => {
   try {
+    const sequelize = req.app.get("sequelize");
     const { Contract, Job, Profile } = req.app.get("models");
     const endDate = req.query.end
       ? moment(req.query.end).endOf("day").format("YYYY-MM-DD HH:mm:ss")
@@ -43,6 +44,7 @@ router.get("/best-profession", async (req, res) => {
     const startDate = req.query.start
       ? moment(req.query.start).startOf("day").format("YYYY-MM-DD HH:mm:ss")
       : undefined;
+
     const jobs = await Job.findAll({
       where: {
         paid: true,
@@ -51,43 +53,34 @@ router.get("/best-profession", async (req, res) => {
           [Op.gte]: startDate,
         },
       },
+      attributes: [
+        [sequelize.fn("COUNT", sequelize.col("price")), "job_count"],
+        [sequelize.fn("SUM", sequelize.col("price")), "sum_price"],
+        [sequelize.col("profession", { model: Profile }), "profession"],
+      ],
+      group: [sequelize.col("profession", { model: Profile })],
+      order: [["sum_price", "DESC"]],
+      limit: 1,
       include: [
         {
           model: Contract,
-          include: [{ model: Profile, as: "Contractor" }],
+          attributes: [],
+          include: [
+            {
+              model: Profile,
+              as: "Contractor",
+              attributes: ["id", "profession"],
+            },
+          ],
         },
       ],
     });
 
-    if (jobs.length === 0) {
+    if (!jobs || jobs.length === 0) {
       return res.json(null);
     }
 
-    const groupByProfession = jobs.reduce((acc, job) => {
-      const existing = acc.find(
-        (e) => e.profession === job.Contract.Contractor.profession
-      );
-
-      if (!existing) {
-        acc.push({
-          profession: job.Contract.Contractor.profession,
-          paid: job.price,
-        });
-        return acc;
-      }
-
-      existing.paid += job.price;
-      return acc;
-    }, []);
-
-    const maxProfession = groupByProfession.reduce((acc, prof) => {
-      if (acc.price < prof.price) {
-        acc = prof;
-      }
-
-      return acc;
-    });
-    res.json(maxProfession);
+    res.json({profession: jobs[0].dataValues.profession});
   } catch (error) {
     res.status(500).end(error.message);
   }
@@ -131,6 +124,7 @@ router.get("/best-profession", async (req, res) => {
 
 router.get("/best-clients", async (req, res) => {
   try {
+    const sequelize = req.app.get("sequelize");
     const { Contract, Job, Profile } = req.app.get("models");
     const endDate = req.query.end
       ? moment(req.query.end).endOf("day").format("YYYY-MM-DD HH:mm:ss")
@@ -148,10 +142,28 @@ router.get("/best-clients", async (req, res) => {
           [Op.gte]: startDate,
         },
       },
+      attributes: [
+        // [sequelize.fn("COUNT", sequelize.col("price")), "job_count"],
+        [sequelize.fn("SUM", sequelize.col("price")), "paid"],
+        [sequelize.col("firstName", { model: Profile }), "client_firstName"],
+        [sequelize.col("lastName", { model: Profile }), "client_lastName"],
+        [sequelize.col("Contract.Client.id", { model: Profile }), "id"],
+        // [sequelize.col("Contract.Client.fullName", { model: Profile }), "fullName"],
+      ],
+      group: [sequelize.col("Contract.Client.id", { model: Profile })],
+      order: [["paid", "DESC"]],
+      limit: limit,
       include: [
         {
           model: Contract,
-          include: [{ model: Profile, as: "Client" }],
+          attributes: [],
+          include: [
+            {
+              model: Profile,
+              as: "Client",
+              attributes: ["id"],
+            },
+          ],
         },
       ],
     });
@@ -160,28 +172,36 @@ router.get("/best-clients", async (req, res) => {
       return res.json(null);
     }
 
-    const groupByClient = jobs
-      .reduce((acc, job) => {
-        const existing = acc.find((e) => e.id === job.Contract.Client.id);
+    // const groupByClient = jobs
+    //   .reduce((acc, job) => {
+    //     const existing = acc.find((e) => e.id === job.Contract.Client.id);
 
-        if (!existing) {
-          acc.push({
-            id: job.Contract.Client.id,
-            fullName: `${job.Contract.Client.firstName} ${job.Contract.Client.lastName}`,
-            paid: job.price,
-          });
-          return acc;
-        }
+    //     if (!existing) {
+    //       acc.push({
+    //         id: job.Contract.Client.id,
+    //         fullName: `${job.Contract.Client.firstName} ${job.Contract.Client.lastName}`,
+    //         paid: job.price,
+    //       });
+    //       return acc;
+    //     }
 
-        existing.paid += job.price;
-        return acc;
-      }, [])
-      .sort((a, b) => {
-        return b.paid - a.paid;
-      });
+    //     existing.paid += job.price;
+    //     return acc;
+    //   }, [])
+    //   .sort((a, b) => {
+    //     return b.paid - a.paid;
+    //   });
 
-    const limitResult = groupByClient.slice(0, limit);
-    res.json(limitResult);
+    // const limitResult = groupByClient.slice(0, limit);
+    res.json(
+      jobs.map((j) => {
+        return {
+          fullName: `${j.dataValues.client_firstName} ${j.dataValues.client_lastName}`,
+          id: j.id,
+          paid: j.paid,
+        };
+      })
+    );
   } catch (error) {
     res.status(500).end(error.message);
   }

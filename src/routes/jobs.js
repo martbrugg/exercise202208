@@ -28,7 +28,9 @@ router.get("/unpaid", async (req, res) => {
     const { Contract, Job } = req.app.get("models");
     const contracts = await Job.findAll({
       where: {
-        paid: { [Op.eq]: null },
+        paid: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.eq]: false }],
+        },
       },
       include: [
         {
@@ -82,46 +84,62 @@ router.get("/unpaid", async (req, res) => {
 router.post("/:job_id/pay", async (req, res) => {
   try {
     const { job_id } = req.params;
+    const sequelize = req.app.get("sequelize");
     const { Job, Contract, Profile } = req.app.get("models");
-    const job = await Job.findByPk(job_id, {
-      // paid: { [Op.eq]: null },
-      include: [
-        {
-          model: Contract,
-          include: [
-            { model: Profile, as: "Contractor" },
-            { model: Profile, as: "Client" },
-          ],
-          where: {
-            ClientId: req.profile.id,
+
+    const result = await sequelize.transaction(async (t) => {
+      const job = await Job.findByPk(job_id, {
+        transaction: t,
+        // paid: { [Op.eq]: null },
+        include: [
+          {
+            model: Contract,
+            include: [
+              { model: Profile, as: "Contractor" },
+              { model: Profile, as: "Client" },
+            ],
+            where: {
+              ClientId: req.profile.id,
+            },
           },
-        },
-      ],
+        ],
+      });
+
+      if (!job) throw new Error("job does not exist");
+
+      if (job.paid) throw new Error("job is already paid");
+
+      if (
+        job.Contract.Contractor &&
+        job.Contract.Client &&
+        job.Contract.Client.balance >= job.price
+      ) {
+        const newClientBalance = job.Contract.Client.balance - job.price;
+        const newContractorBalance =
+          job.Contract.Contractor.balance + job.price;
+
+        await job.Contract.Client.update(
+          { balance: newClientBalance },
+          { transaction: t }
+        );
+        await job.Contract.Contractor.update(
+          { balance: newContractorBalance },
+          { transaction: t }
+        );
+        await job.update(
+          { paid: true, paymentDate: new Date() },
+          { transaction: t }
+        );
+
+        return job;
+      } else {
+        throw new Error("not enough balance");
+      }
     });
 
-    if (!job) return res.status(404).end("job does not exist");
-
-    if (job.paid) return res.status(400).end("job is already paid");
-
-    if (
-      job.Contract.Contractor &&
-      job.Contract.Client &&
-      job.Contract.Client.balance >= job.price
-    ) {
-      const newClientBalance = job.Contract.Client.balance - job.price;
-      const newContractorBalance = job.Contract.Contractor.balance + job.price;
-
-      await job.Contract.Client.update({ balance: newClientBalance });
-      await job.Contract.Contractor.update({ balance: newContractorBalance });
-      await job.update({ paid: true, paymentDate: new Date() });
-      console.log("enough balance");
-    } else {
-      return res.status(400).end("not enough balance");
-    }
-
-    res.json(job);
+    res.json(result);
   } catch (error) {
-    res.status(500).end(error.message);
+    res.status(400).end(error.message);
   }
 });
 

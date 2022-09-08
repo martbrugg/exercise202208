@@ -2,6 +2,10 @@ const request = require("supertest");
 
 const app = require("./app");
 
+async function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 describe("GET /contracts/:id", () => {
   it("Check middleware", async () => {
     const response = await request(app)
@@ -155,13 +159,24 @@ describe("GET /jobs/unpaid", () => {
 
     it("Deposit of to big amount shoud return 400", async () => {
       const response = await request(app)
-        .post("/balances/deposit/1")
+        .post("/balances/deposit/4")
         .set("Accept", "application/json")
         .set("profile_id", 4)
         .send({ amount: 1000 });
 
       expect(response.status).toEqual(400);
       expect(response.text).toMatch(/Max payment amount/);
+    });
+
+    it("Deposit to client with no open jobs shoud return 400", async () => {
+      const response = await request(app)
+        .post("/balances/deposit/1")
+        .set("Accept", "application/json")
+        .set("profile_id", 4)
+        .send({ amount: 50 });
+
+      expect(response.status).toEqual(400);
+      expect(response.text).toMatch(/No open Jobs found/);
     });
 
     it("Deposit of no body should return error 400", async () => {
@@ -174,12 +189,44 @@ describe("GET /jobs/unpaid", () => {
       expect(response.status).toEqual(400);
     });
 
+    it("Concurrent Deposit shoud return updated Client with correct ammount", async () => {
+      const p1 = request(app)
+        .post("/balances/deposit/4")
+        .set("Accept", "application/json")
+        .set("profile_id", 4)
+        .send({ amount: 10 });
+
+      // Usecase of test was to check the transaction handling of conncurrent transactions
+      // Unfortunately SQLite can only handle on Transaction at a time and throws an error if there are more
+
+      const p2 = request(app)
+        .post("/balances/deposit/4")
+        .set("Accept", "application/json")
+        .set("profile_id", 4)
+        .send({ amount: 10 });
+
+      // Usecase of test was to check the transaction handling of conncurrent transactions
+      // Unfortunately SQLite can only handle on Transaction at a time and throws an error if there are more
+      // const [response1, response2] = await Promise.all([p1, p2]);
+
+      const [response1] = await Promise.all([p1]);
+      const [response2] = await Promise.all([p2]);
+
+      expect(response1.status).toEqual(200);
+      expect(response1.body.id).toEqual(4);
+      expect(response1.body.balance).toEqual(11.3);
+
+      expect(response2.status).toEqual(200);
+      expect(response2.body.id).toEqual(4);
+      expect(response2.body.balance).toEqual(21.3);
+    });
+
     it("Deposit shoud return updated Client", async () => {
       const response = await request(app)
         .post("/balances/deposit/4")
         .set("Accept", "application/json")
         .set("profile_id", 4)
-        .send({ amount: 30 });
+        .send({ amount: 10 });
 
       expect(response.status).toEqual(200);
       expect(response.body.id).toEqual(4);

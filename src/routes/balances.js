@@ -40,50 +40,67 @@ const { Op } = require("sequelize");
 router.post("/deposit/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
+    const sequelize = req.app.get("sequelize");
     const { Profile, Job, Contract } = req.app.get("models");
     const { amount } = req.body;
-    const client = await Profile.findByPk(userId);
+    const result = await sequelize.transaction(async (t) => {
+      const client = await Profile.findByPk(userId, {transaction: t});
 
-    if (!client) {
-      return res.status(404).end(`Client not found`);
-    }
+      if (!client) {
+        //return res.status(404).end(`Client not found`);
+        throw new Error(`Client not found`)
+      }
 
-    if (!amount) {
-      return res.status(400).end(`no amount in body`);
-    }
-    const jobs = await Job.findAll({
-      where: {
-        paid: { [Op.eq]: null },
-      },
-      include: [
-        {
-          model: Contract,
-          where: {
-            status: {
-              [Op.in]: ["in_progress"],
-            },
-            ClientId: userId,
+      if (!amount) {
+        //return res.status(400).end(`no amount in body`);
+        throw new Error(`no amount in body`)
+
+      }
+
+      const openJobAmount = await Job.sum("price", {
+        where: {
+          paid: {
+            [Op.or]: [{ [Op.eq]: null }, { [Op.eq]: false }],
           },
         },
-      ],
+        include: [
+          {
+            model: Contract,
+            where: {
+              status: {
+                [Op.in]: ["in_progress"],
+              },
+              ClientId: userId,
+            },
+          },
+        ],
+      },  { transaction: t });
+
+      if (openJobAmount === null) {
+        throw new Error(`No open Jobs found`)
+        //return res.status(400).end(`No open Jobs found`);
+      }
+
+      const maxAmount = openJobAmount * 0.25;
+
+      if (amount + client.balance > maxAmount) {
+        throw new Error(`Max payment amount (${maxAmount}) exceeded`)
+        // return res
+        //   .status(400)
+        //   .end(`Max payment amount (${maxAmount}) exceeded`);
+      }
+
+      await client.update(
+        { balance: client.balance + amount },
+        { transaction: t }
+      );
+
+      return client;
     });
 
-    const openJobAmount = jobs.reduce((acc, job) => {
-      acc += job.price;
-      return acc;
-    }, 0);
-
-    const maxAmount = openJobAmount * 0.25;
-
-    if (amount + client.balance > maxAmount) {
-      return res.status(400).end(`Max payment amount (${maxAmount}) exceeded`);
-    }
-
-    await client.update({ balance: client.balance + amount });
-
-    res.json(client);
+    res.json(result);
   } catch (error) {
-    res.status(500).end(error.message);
+    res.status(400).end(error.message);
   }
 });
 
